@@ -1,0 +1,6 @@
+Benchmark,Time(ns)
+RawPtr Creation,28.893
+SharedPtr Creation,72.1751
+Std_SharedPtr Creation,68.717
+Std_UniquePtr Creation,64.3449
+UniquePtr Creation,36.0155

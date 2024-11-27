@@ -14,6 +14,8 @@ public:
 
     void registerBenchmark(const std::string& name, BenchmarkFunction func);
     void runBenchmarks(int iterations = 1000);
+    std::map<std::string, double> getResults() const;
+    void clearResults();
     void saveResultsToFile(const std::string& filename) const;
     void printResults() const;
 

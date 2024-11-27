@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Option.h"
+#include "SharedPtr.h"
+
 
 template<class T>
 class MutableSequence {
@@ -22,7 +24,7 @@ public:
 
     virtual Option<T> tryGet(int index) const = 0;
 
-    virtual MutableSequence<T> *getSubSequence(int startIndex, int endIndex) const = 0;
+    virtual SharedPtr<MutableSequence<T>> getSubSequence(int startIndex, int endIndex) const = 0;
 
     virtual void append(const T &item) = 0;
 
@@ -30,6 +32,5 @@ public:
 
     virtual void insertAt(int index, const T &item) = 0;
 
-    virtual void concat(MutableSequence<T> *sequence) = 0;
 
 };

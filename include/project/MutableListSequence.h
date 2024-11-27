@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include "MutableSequence.h"
 #include "LinkedList.h"
 
@@ -26,12 +27,6 @@ public:
         return base.getByIndex(index);
     }
 
-    MutableSequence<T> *getSubSequence(int startIndex, int endIndex) const override {
-        LinkedList<T>* sub = base.getSubList(startIndex, endIndex);
-        auto result = new MutableListSequence<T>(*sub);
-        delete sub;
-        return result;
-    }
 
     int getLength() const override {
         return base.getLength();
@@ -49,9 +44,14 @@ public:
         base.insertAt(index, item);
     }
 
-    void concat(MutableSequence<T> *sequence) override {
-        for (int i = 0; i < sequence->getLength(); ++i) {
-            base.append(sequence->get(i));
+    SharedPtr<MutableSequence<T>> getSubSequence(int startIndex, int endIndex) const override {
+        SharedPtr<LinkedList<T>> subList = base.getSubList(startIndex, endIndex);
+        return SharedPtr<MutableSequence<T>>(new MutableListSequence<T>(*subList));
+    }
+
+    void concat(SharedPtr<MutableListSequence<T>> sequence) {
+        for (int i = 0; i < sequence->getLength(); i++) {
+            append(sequence->get(i));
         }
     }
 

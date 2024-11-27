@@ -17,8 +17,16 @@ void BenchmarkRunner::runBenchmarks(int iterations) {
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
 
-        results[name] = duration.count() / static_cast<double>(iterations);
+        results[name] = duration.count();
     }
+}
+
+std::map<std::string, double> BenchmarkRunner::getResults() const {
+    return results;
+}
+
+void BenchmarkRunner::clearResults() {
+    results.clear();
 }
 
 void BenchmarkRunner::saveResultsToFile(const std::string& filename) const {

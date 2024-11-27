@@ -37,7 +37,7 @@ private:
     }
 
     void clear() {
-        first.reset();  // Обнуляем SharedPtr, чтобы уменьшить счетчики ссылок
+        first.reset();
         last.reset();
         size = 0;
     }
@@ -65,31 +65,27 @@ public:
         }
     }
 
-    ~LinkedList() {
-        // Деструктор не требуется, так как SharedPtr
-        // автоматически освободит first и last,
-        // а вместе с ними и все остальные узлы списка.
-    }
+    ~LinkedList() = default;
 
     bool isEmpty() const {
         return size == 0;
     }
 
-    T &getFirst() const {
+    T &getFirst() {
         if (!first) {
             throw std::out_of_range("ListIsEmpty");
         }
         return first->data;
     }
 
-    T &getLast() const {
+    T &getLast() {
         if (!last) {
             throw std::out_of_range("ListIsEmpty");
         }
         return last->data;
     }
 
-    T &getByIndex(int index) const {
+    T &getByIndex(int index) {
         checkIndex(index);
         SharedPtr<Node<T>> temp = first;
         for (int i = 0; i < index; ++i) {
@@ -98,24 +94,45 @@ public:
         return temp->data;
     }
 
-    LinkedList<T> *getSubList(int startIndex, int endIndex) const {
+    const T &getFirst() const {
+        if (!first) {
+            throw std::out_of_range("ListIsEmpty");
+        }
+        return first->data;
+    }
+
+    const T &getLast() const {
+        if (!last) {
+            throw std::out_of_range("ListIsEmpty");
+        }
+        return last->data;
+    }
+
+    const T &getByIndex(int index) const {
+        checkIndex(index);
+        SharedPtr<Node<T>> temp = first;
+        for (int i = 0; i < index; ++i) {
+            temp = temp->right;
+        }
+        return temp->data;
+    }
+
+    SharedPtr<LinkedList<T>> getSubList(int startIndex, int endIndex) const {
         checkIndex(startIndex);
         checkIndex(endIndex);
         if (startIndex > endIndex) {
             throw std::invalid_argument("startIndex cannot be greater than endIndex");
         }
-        auto* subList = new LinkedList<T>();
+        auto subList = MakeShared<LinkedList<T>>();
         SharedPtr<Node<T>> current = first;
-
         for (int i = 0; i < startIndex; ++i) {
             current = current->right;
         }
-
         for (int i = startIndex; i <= endIndex; ++i) {
             subList->append(current->data);
             current = current->right;
-        }
 
+        }
         return subList;
     }
 
@@ -153,81 +170,76 @@ public:
         checkIndex(index);
         if (index == 0) {
             prepend(value);
-        } else if (index == size) {
-            append(value);
-        } else {
-            Node<T>* temp = first.get();
-            for (int i = 0; i < index - 1; ++i) {
-                temp = temp->right.get();
-            }
-            auto newNode = MakeShared<Node<T>>(value);
-            newNode->right = temp->right;
-            newNode->left = WeakPtr<Node<T>>(); // !!! Исправлено:  обнуляем WeakPtr
-            if (temp->right.get()) {
-                temp->right.get()->left = WeakPtr<Node<T>>(newNode);
-            }
-            temp->right = newNode;
-            size++;
+            return;
         }
+        if (index == size) {
+            append(value);
+            return;
+        }
+
+        Node<T>* temp = first.get();
+        for (int i = 0; i < index - 1; ++i) {
+            temp = temp->right.get();
+        }
+        auto newNode = MakeShared<Node<T>>(value);
+        newNode->right = temp->right;
+        newNode->left = WeakPtr<Node<T>>(); // !!! Исправлено:  обнуляем WeakPt
+        if (temp->right.get()) {
+            temp->right.get()->left = WeakPtr<Node<T>>(newNode);
+        }
+        temp->right = newNode;
+        size++;
+
     }
 
     void removeAt(int index) {
         checkIndex(index);
         if (index == 0) {
-            // Удаление первого элемента
             first = first->right;
-            if (first.get()) {
+            if (first) {
                 first->left.reset();
             } else {
                 last.reset();
             }
-        } else if (index == size - 1) {
-            // Удаление последнего элемента
-            last = last->left;
-            if (last.get()) {
+            size--;
+            return;
+        }
+        if (index == size - 1) {
+            last = last->left.lock();
+            if(last){
                 last->right.reset();
             } else {
                 first.reset();
             }
-        } else {
-            Node<T>* current = first.get();
-            for (int i = 0; i < index; ++i) {
-                current = current->right.get();
-            }
-
-            // Обнуляем SharedPtr в удаляемом узле
-            if (current->left) {
-                current->left->right.reset();
-            }
-            if (current->right) {
-                current->right->left.reset();
-            }
-
-            if (index == 0) {
-                first = current->right;
-            } else if (index == size - 1) {
-                last = current->left;
-            } else {
-                current->left->right = current->right;
-                current->right->left = current->left;
-            }
             size--;
+            return;
         }
+
+        SharedPtr<Node<T>> current = first;
+        for (int i = 0; i < index; ++i) {
+            current = current->right;
+        }
+        if(current->left.lock()) {
+            current->left.lock()->right = current->right;
+        }
+        if (current->right) {
+            current->right->left = current->left;
+        }
+        size--;
     }
 
     LinkedList<T>* concatenate(const LinkedList<T>& other) {
         if (this->isEmpty()) {
-            return new LinkedList<T>(other);
+            return new LinkedList<T>(other); // copy
         }
 
-        // Соединяем последний элемент первого списка с первым элементом второго списка
-        if(!other.isEmpty()) {
-            last->right = other.first;
-            other.first->left = WeakPtr<Node<T>>(last);
-
+        if (!other.isEmpty()) {
+            SharedPtr<Node<T>> otherFirst = other.first;
+            last->right = otherFirst;
+            otherFirst->left = WeakPtr<Node<T>>(last);
             size += other.getLength();
+            last = other.last;
         }
-
         return new LinkedList<T>(*this);
     }
 

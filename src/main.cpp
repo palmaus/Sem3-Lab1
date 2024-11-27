@@ -28,51 +28,6 @@
 void runAllTests() {
     TestRunner runner;
 
-    // Запуск тестов CLI
-    runner.runTestGroup("CreateSequenceCommand Tests", {
-            cli_tests::testCreateSequenceCommand,
-            cli_tests::testCreateSequenceWithSameName
-    });
-    runner.runTestGroup("PrintSequenceCommand Tests", {
-            cli_tests::testPrintSequenceCommand
-    });
-    runner.runTestGroup("AppendSequenceCommand Tests", {
-            cli_tests::testAppendSequenceCommand,
-            cli_tests::testAppendSequenceInvalidName
-    });
-    runner.runTestGroup("PrependSequenceCommand Tests", {
-            cli_tests::testPrependSequenceCommand,
-            cli_tests::testPrependSequenceInvalidName
-    });
-    runner.runTestGroup("InsertSequenceCommand Tests", {
-            cli_tests::testInsertSequenceCommand,
-            cli_tests::testInsertSequenceInvalidName,
-            cli_tests::testInsertSequenceInvalidIndex
-    });
-    runner.runTestGroup("GetLengthCommand Tests", {
-            cli_tests::testGetLengthCommand,
-            cli_tests::testGetLengthInvalidName
-    });
-    runner.runTestGroup("GetSubsequenceCommand Tests", {
-            cli_tests::testGetSubsequenceCommand,
-            cli_tests::testGetSubsequenceInvalidName,
-            cli_tests::testGetSubsequenceInvalidIndex
-    });
-    runner.runTestGroup("GetSequenceElementCommand Tests", {
-            cli_tests::testGetSequenceElementCommand,
-            cli_tests::testGetSequenceElementInvalidName,
-            cli_tests::testGetSequenceElementInvalidIndex
-    });
-    runner.runTestGroup("TryGetSequenceElementCommand Tests", {
-            cli_tests::testTryGetSequenceElementCommand,
-            cli_tests::testTryGetSequenceElementInvalidName,
-            cli_tests::testTryGetSequenceElementInvalidIndex
-    });
-    runner.runTestGroup("ConcatSequenceCommand Tests", {
-            cli_tests::testConcatSequenceCommand,
-            cli_tests::testConcatSequenceInvalidName
-    });
-
     // Запуск тестов внутренней реализации
     runner.runTestGroup("SharedPtr Tests", {
                 internal_tests::testSharedPtr
@@ -83,6 +38,7 @@ void runAllTests() {
     runner.runTestGroup("WeakPtr Tests", {
                 internal_tests::testWeakPtr
     });
+
     runner.runTestGroup("LinkedList Tests", {
             internal_tests::testLinkedList
     });
@@ -93,53 +49,48 @@ void runAllTests() {
     runner.printResults();
 }
 
-void benchmark(int iterations) {
-    BenchmarkRunner benchmarkRunner;
+void benchmark(int startIterations, int endIterations, int step) {
+        BenchmarkRunner benchmarkRunner;
 
-    benchmarkRunner.registerBenchmark("RawPtr Creation", [iterations]() {
-        int* ptr = new int(42);
-        delete ptr;
-    });
+        benchmarkRunner.registerBenchmark("RawPtr Creation", []() mutable { // mutable!
+            int* ptr = new int(42);
+            delete ptr;
+            ptr = nullptr;  // Important!
+        });
 
-    benchmarkRunner.registerBenchmark("SharedPtr Creation", [iterations]() {
-        SharedPtr<int> ptr(new int(42));
-    });
-    benchmarkRunner.registerBenchmark("Std_SharedPtr Creation", [iterations]() {
-        std::shared_ptr<int> ptr(new int(42));
-    });
+        benchmarkRunner.registerBenchmark("SharedPtr Creation", []() {
+            SharedPtr<int> ptr(new int(42));
+        });
+        benchmarkRunner.registerBenchmark("Std_SharedPtr Creation", []() {
+            std::shared_ptr<int> ptr(new int(42));
+        });
 
-    benchmarkRunner.registerBenchmark("UniquePtr Creation", [iterations]() {
-        UniquePtr<int> ptr(new int(42));
-    });
-    benchmarkRunner.registerBenchmark("Std_UniquePtr Creation", [iterations]() {
-        std::unique_ptr<int> ptr(new int(42));
-    });
+        benchmarkRunner.registerBenchmark("UniquePtr Creation", []() {
+            UniquePtr<int> ptr(new int(42));
+        });
+        benchmarkRunner.registerBenchmark("Std_UniquePtr Creation", []() {
+            std::unique_ptr<int> ptr(new int(42));
+        });
 
 
-    benchmarkRunner.runBenchmarks(iterations);
-    benchmarkRunner.printResults();
-    benchmarkRunner.saveResultsToFile("../benchmarks/benchmark_results.csv");
-}
+        std::ofstream outfile("../benchmarks/benchmark_results.csv");
+        if (!outfile.is_open()) {
+                std::cerr << "Unable to open file: ../benchmarks/benchmark_results.csv" << std::endl;
+                return;
+        }
+        outfile << "Benchmark,Iterations,Time(ns)\n";
 
-// Функция для инициализации и запуска CLI
-void runCLI() {
-        cli::Menu<int, double, std::string> mainMenu =
-            cli::MenuBuilder<int, double, std::string>("Main Menu")
-                .addCommand("create", new cli::CreateSequenceCommand<int, double, std::string>())
-                .addCommand("print", new cli::PrintSequenceCommand<int, double, std::string>())
-                .addCommand("get", new cli::GetSequenceElementCommand<int, double, std::string>())
-                .addCommand("tryGet", new cli::TryGetSequenceElementCommand<int, double, std::string>())
-                .addCommand("getSubsequence", new cli::GetSubsequenceCommand<int, double, std::string>())
-                .addCommand("length", new cli::GetLengthCommand<int, double, std::string>())
-                .addCommand("append", new cli::AppendSequenceCommand<int, double, std::string>())
-                .addCommand("prepend", new cli::PrependSequenceCommand<int, double, std::string>())
-                .addCommand("insertAt", new cli::InsertSequenceCommand<int, double, std::string>())
-                .addCommand("concat", new cli::ConcatSequenceCommand<int, double, std::string>())
-        .build();
+        for (int iterations = startIterations; iterations <= endIterations; iterations += step) {
+                benchmarkRunner.clearResults();
 
-        // Запуск сессии CLI
-        cli::Session<int, double, std::string> session(mainMenu);
-        session.run();
+                benchmarkRunner.runBenchmarks(iterations); // Вызываем обычный runBenchmarks
+
+                for (const auto& pair : benchmarkRunner.getResults()) {
+                        outfile << pair.first << "," << iterations << "," << pair.second << "\n";
+                }
+        }
+
+        outfile.close();
 }
 
 int main() {
@@ -147,9 +98,7 @@ int main() {
 
     if (runTests) {
         runAllTests();
-        benchmark(1000000); // 1 млн итераций, результат усредняется
-    } else {
-        runCLI();
+        benchmark(10000, 1000000, 10000); // от 10k до 1млн с шагом 10k
+        return 0;
     }
-    return 0;
 }

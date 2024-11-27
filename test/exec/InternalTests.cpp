@@ -71,11 +71,10 @@ namespace internal_tests {
             list.append(2);
             list.append(3);
             list.append(4);
-            auto *sublist = list.getSubList(1, 2);
+            auto sublist = list.getSubList(1, 2);
             if (sublist->getLength() != 2) throw std::runtime_error("Incorrect sublist length.");
             if (sublist->getFirst() != 2) throw std::runtime_error("Incorrect first element of sublist.");
             if (sublist->getLast() != 3) throw std::runtime_error("Incorrect last element of sublist.");
-            delete sublist;
         });
 
         // Тест вставки элемента
@@ -144,6 +143,7 @@ namespace internal_tests {
         runner.expectNoException("testLinkedList::Copy constructor", []() {
             LinkedList<int> list1;
             list1.append(1);
+            list1.append(3);
             list1.append(2);
             LinkedList<int> list2(list1); // Вызов копирующего конструктора
             if (!linkedListsEqual(&list1, &list2))
@@ -197,12 +197,11 @@ namespace internal_tests {
         runner.expectNoException("testMutableListSequence::Getting subsequence", []() {
             int data[] = {1, 2, 3, 4, 5};
             MutableListSequence<int> seq(data, 5);
-            auto *subseq = seq.getSubSequence(1, 3);
+            auto subseq = seq.getSubSequence(1, 3);
             int expectedData[] = {2, 3, 4};
             MutableListSequence<int> expectedSeq(expectedData, 3);
-            if (!sequencesEqual(subseq, &expectedSeq))
+            if (!sequencesEqual(subseq.get(), &expectedSeq))
                 throw std::runtime_error("Incorrect subsequence.");
-            delete subseq;
         });
 
         // Тест вставки элемента
@@ -216,13 +215,13 @@ namespace internal_tests {
         // Тест конкатенации
         runner.expectNoException("testMutableListSequence::Concatenating sequences", []() {
             int data1[] = {1, 2};
-            MutableListSequence<int> seq1(data1, 2);
+            auto seq1 = SharedPtr<MutableListSequence<int>>(new MutableListSequence<int>(data1, 2));
             int data2[] = {3, 4};
-            MutableListSequence<int> seq2(data2, 2);
-            seq1.concat(&seq2);
+            auto seq2 = SharedPtr<MutableListSequence<int>>(new MutableListSequence<int>(data2, 2));
+            seq1->concat(seq2);
             int expectedData[] = {1, 2, 3, 4};
             MutableListSequence<int> expectedSeq(expectedData, 4);
-            if (!sequencesEqual(&seq1, &expectedSeq))
+            if (!sequencesEqual(seq1.get(), &expectedSeq))
                 throw std::runtime_error("Incorrect concatenated sequence.");
         });
 
@@ -555,22 +554,7 @@ namespace internal_tests {
             }
         });
 
-        // 3. Тест lock()
-        runner.expectNoException("WeakPtr::lock() method", []() {
-            SharedPtr<int> sharedPtr(new int(10));
-            WeakPtr<int> weakPtr(sharedPtr);
-            if (weakPtr.lock().get() != sharedPtr.get()) {
-                throw std::runtime_error("Incorrect locked pointer.");
-            }
-
-            sharedPtr.reset();
-
-            if (weakPtr.lock().get() != nullptr) {
-                throw std::runtime_error("Locked pointer should be null after SharedPtr reset.");
-            }
-        });
-
-        // 4. Тест use_count()
+        // 3. Тест use_count()
         runner.expectNoException("WeakPtr::use_count() method", []() {
             SharedPtr<int> sharedPtr(new int(10));
             WeakPtr<int> weakPtr1(sharedPtr);

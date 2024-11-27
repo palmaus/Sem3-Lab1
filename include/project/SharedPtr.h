@@ -11,27 +11,27 @@ class SharedPtr {
 public:
     struct ControlBlock {
         size_t count;
+        size_t weak_count;
         T* ptr;
         Deleter deleter;
 
-        ControlBlock(size_t cnt, T* p, Deleter d) : count(cnt), ptr(p), deleter(d) {}
+        ControlBlock(size_t cnt, size_t weak_cnt, T* p, Deleter d) : count(cnt), weak_count(weak_cnt), ptr(p), deleter(d) {}
     };
 
     // Конструктор по умолчанию
-    SharedPtr() : ptr(nullptr), controlBlock(nullptr) {}
+    SharedPtr() : controlBlock(nullptr) {}
 
     // Конструктор от указателя
     template <typename U = T, typename = std::enable_if_t<!std::is_array_v<U>>>
-    explicit SharedPtr(T* ptr = nullptr, Deleter d = Deleter()) : ptr(ptr), controlBlock(ptr ? new ControlBlock{1, ptr, d} : nullptr) {}
+    explicit SharedPtr(T* ptr = nullptr, Deleter d = Deleter()) : controlBlock(ptr ? new ControlBlock{1, 0, ptr, d} : nullptr) {}
 
     // Конструктор копирования
-    SharedPtr(const SharedPtr& other) : ptr(other.ptr), controlBlock(other.controlBlock) {
+    SharedPtr(const SharedPtr& other) : controlBlock(other.controlBlock) {
         increment();
     }
 
     // Конструктор перемещения
-    SharedPtr(SharedPtr&& other) noexcept : ptr(other.ptr), controlBlock(other.controlBlock) {
-        other.ptr = nullptr;
+    SharedPtr(SharedPtr&& other) noexcept : controlBlock(other.controlBlock) {
         other.controlBlock = nullptr;
     }
 
@@ -39,7 +39,6 @@ public:
     SharedPtr& operator=(const SharedPtr& other) {
         if (this != &other) {
             reset();
-            ptr = other.ptr;
             controlBlock = other.controlBlock;
             increment();
         }
@@ -55,9 +54,7 @@ public:
     SharedPtr& operator=(SharedPtr&& other) noexcept {
         if (this != &other) {
             reset();
-            ptr = other.ptr;
             controlBlock = other.controlBlock;
-            other.ptr = nullptr;
             other.controlBlock = nullptr;
         }
         return *this;
@@ -72,47 +69,72 @@ public:
     ~SharedPtr() { reset(); }
 
     // Оператор разыменования
-    T& operator*() const { return *ptr; }
+    const T& operator*() const {
+        if (!controlBlock || !controlBlock->ptr) {
+            throw std::runtime_error("Dereferencing null SharedPtr");
+        }
+        return *controlBlock->ptr;
+    }
+
+    T& operator*() {
+        if (!controlBlock || !controlBlock->ptr) {
+            throw std::runtime_error("Dereferencing null SharedPtr");
+        }
+        return *controlBlock->ptr;
+    }
+
     // Оператор стрелка
-    T* operator->() const { return ptr; }
+    const T* operator->() const {
+        if (!controlBlock || !controlBlock->ptr) {
+            throw std::runtime_error("Dereferencing null SharedPtr");
+        }
+        return controlBlock->ptr;
+    }
+
+    T* operator->() {
+        if (!controlBlock || !controlBlock->ptr) {
+            throw std::runtime_error("Dereferencing null SharedPtr");
+        }
+        return controlBlock->ptr;
+    }
 
     // Получение указателя
-    T* get() const { return ptr; }
+    T* get() const { return controlBlock ? controlBlock->ptr : nullptr; }
 
-    bool operator==(std::nullptr_t) const { return ptr == nullptr; }
-    bool operator!=(std::nullptr_t) const { return ptr != nullptr; }
+    bool operator==(std::nullptr_t) const { return get() == nullptr; }
+    bool operator!=(std::nullptr_t) const { return get() != nullptr; }
 
     template<typename U, typename D>
     bool operator==(const SharedPtr<U, D>& other) const {
-        return ptr == other.ptr;
+        return get() == other.get();
     }
+
 
     // Получение количества ссылок
     size_t use_count() const { return controlBlock ? controlBlock->count : 0; }
 
     // Проверка на пустоту
-    explicit operator bool() const { return ptr != nullptr; }
+    explicit operator bool() const { return controlBlock && controlBlock->ptr; }
 
     // Сброс указателя
     void reset() {
         if (controlBlock) {
             decrement();
         }
+        controlBlock = nullptr;
     }
 
     // Сброс с новым указателем
     template <typename U = T, typename = std::enable_if_t<!std::is_array_v<U>>>
     void reset(T* def_ptr, Deleter d = Deleter()) {
         reset();
-        ptr = def_ptr;
-        controlBlock = def_ptr ? new ControlBlock{1, ptr, d} : nullptr;
+        controlBlock = def_ptr ? new ControlBlock{1, 0, def_ptr, d} : nullptr;
     }
 
 private:
-    T* ptr;
     ControlBlock* controlBlock;
 
-    explicit SharedPtr(const WeakPtr<T, Deleter>& weak, bool) : ptr(weak.getPtr()), controlBlock(weak.controlBlock) {
+    explicit SharedPtr(const WeakPtr<T, Deleter>& weak, bool) : controlBlock(weak.controlBlock) {
         increment();
     }
 
@@ -125,11 +147,17 @@ private:
 
     void decrement() {
         if (controlBlock && --controlBlock->count == 0) {
-            controlBlock->deleter(ptr);
-            controlBlock = nullptr;
-            ptr = nullptr;
+            if (controlBlock->ptr) {
+                controlBlock->deleter(controlBlock->ptr);
+                controlBlock->ptr = nullptr;
+            }
+            if (controlBlock->weak_count == 0) {
+                delete controlBlock;
+            }
         }
+        controlBlock = nullptr;
     }
+
 
     friend class WeakPtr<T, Deleter>;
 

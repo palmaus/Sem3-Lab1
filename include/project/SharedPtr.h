@@ -121,7 +121,6 @@ public:
         if (controlBlock) {
             decrement();
         }
-        controlBlock = nullptr;
     }
 
     // Сброс с новым указателем
@@ -154,8 +153,8 @@ private:
             if (controlBlock->weak_count == 0) {
                 delete controlBlock;
             }
+            controlBlock = nullptr;
         }
-        controlBlock = nullptr;
     }
 
 

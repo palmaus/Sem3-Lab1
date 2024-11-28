@@ -28,9 +28,12 @@ public:
     ~WeakPtr() {
         if (controlBlock) {
             if (controlBlock->weak_count > 0) {
-                controlBlock->weak_count--;
+                --controlBlock->weak_count;
             }
-            // Не удаляем controlBlock напрямую. Это будет обязанностью SharedPtr.
+            if (controlBlock->weak_count == 0 && controlBlock->count == 0) {
+                delete controlBlock;
+                controlBlock = nullptr;
+            }
         }
     }
 

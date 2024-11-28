@@ -80,7 +80,7 @@ void benchmark(int startIterations, int endIterations, int step) {
 }
 
 int main(int argc, char *argv[]) {
-    bool runTests = false;
+    bool runTests = true;
 
     if (runTests) {
         runAllTests();

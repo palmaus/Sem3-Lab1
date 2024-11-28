@@ -37,8 +37,14 @@ private:
     }
 
     void clear() {
-        first.reset();
-        last.reset();
+        while (first && first->right) {
+            auto next = first->right;
+            first->left = WeakPtr<Node<T>>();
+            first.reset();
+            first = next;
+        }
+        first = SharedPtr<Node<T>>();
+        last = SharedPtr<Node<T>>();
         size = 0;
     }
 
@@ -54,7 +60,7 @@ public:
     LinkedList(const LinkedList<T>& list) : first{nullptr}, last{nullptr}, size{0} {
         SharedPtr<Node<T>> current = list.first;
         while (current) {
-            append(current->data); // append увеличивает счетчики ссылок
+            append(current->data);
             current = current->right;
         }
     }
@@ -65,7 +71,9 @@ public:
         }
     }
 
-    ~LinkedList() = default;
+    ~LinkedList() {
+        clear(); // Вызов метода очистки для удаления всех узлов
+    }
 
     bool isEmpty() const {
         return size == 0;
@@ -133,6 +141,7 @@ public:
             current = current->right;
 
         }
+        current = SharedPtr<Node<T>>();
         return subList;
     }
 
@@ -150,6 +159,7 @@ public:
             newNode->left = WeakPtr<Node<T>>(last);  // !!!  Используем конструктор WeakPtr
             last = newNode;
         }
+        newNode = SharedPtr<Node<T>>();
         size++;
     }
 

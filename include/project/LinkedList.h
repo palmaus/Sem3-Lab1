@@ -194,23 +194,33 @@ public:
 
     void removeAt(int index) {
         checkIndex(index);
+
+        // Удаление первого элемента
         if (index == 0) {
+            auto temp = first;
             first = first->right;
             if (first) {
-                first->left.reset();
+                first->left = WeakPtr<Node<T>>();
             } else {
                 last.reset();
             }
+            temp.reset();
             size--;
             return;
         }
+
+        // Удаление последнего элемента
         if (index == size - 1) {
+            auto temp = last;
             last = last->left.lock();
-            if(last){
+
+            if (last) {
                 last->right.reset();
             } else {
                 first.reset();
             }
+
+            temp.reset();
             size--;
             return;
         }
@@ -219,6 +229,7 @@ public:
         for (int i = 0; i < index; ++i) {
             current = current->right;
         }
+
         if(current->left.lock()) {
             current->left.lock()->right = current->right;
         }
@@ -228,9 +239,11 @@ public:
         size--;
     }
 
+
+
     LinkedList<T>* concatenate(const LinkedList<T>& other) {
         if (this->isEmpty()) {
-            return new LinkedList<T>(other); // copy
+            return new LinkedList<T>(other);
         }
 
         if (!other.isEmpty()) {

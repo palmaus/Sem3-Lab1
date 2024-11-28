@@ -44,6 +44,10 @@ public:
         base.insertAt(index, item);
     }
 
+    void removeAt(int index) override {
+        base.removeAt(index);
+    }
+
     SharedPtr<MutableSequence<T>> getSubSequence(int startIndex, int endIndex) const override {
         SharedPtr<LinkedList<T>> subList = base.getSubList(startIndex, endIndex);
         return SharedPtr<MutableSequence<T>>(new MutableListSequence<T>(*subList));

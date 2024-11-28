@@ -32,5 +32,7 @@ public:
 
     virtual void insertAt(int index, const T &item) = 0;
 
+    virtual void removeAt(int index) = 0;
+
 
 };

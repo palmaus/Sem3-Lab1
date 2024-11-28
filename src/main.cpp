@@ -15,7 +15,6 @@
 void runAllTests() {
     TestRunner runner;
 
-    // Запуск тестов внутренней реализации
     runner.runTestGroup("SharedPtr Tests", {
                 internal_tests::testSharedPtr
     });
@@ -42,7 +41,7 @@ void benchmark(int startIterations, int endIterations, int step) {
         benchmarkRunner.registerBenchmark("RawPtr Creation", []() mutable { // mutable!
             int* ptr = new int(42);
             delete ptr;
-            ptr = nullptr;  // Important!
+            ptr = nullptr;
         });
 
         benchmarkRunner.registerBenchmark("SharedPtr Creation", []() {
@@ -70,7 +69,7 @@ void benchmark(int startIterations, int endIterations, int step) {
         for (int iterations = startIterations; iterations <= endIterations; iterations += step) {
                 benchmarkRunner.clearResults();
 
-                benchmarkRunner.runBenchmarks(iterations); // Вызываем обычный runBenchmarks
+                benchmarkRunner.runBenchmarks(iterations);
 
                 for (const auto& pair : benchmarkRunner.getResults()) {
                         outfile << pair.first << "," << iterations << "," << pair.second << "\n";

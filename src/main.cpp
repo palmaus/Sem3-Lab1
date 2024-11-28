@@ -3,26 +3,13 @@
 #include <string>
 #include <memory>
 
-#include "Menu.h"
-#include "Session.h"
-
-#include "commands/CreateSequenceCommand.h"
-#include "commands/PrintSequenceCommand.h"
-#include "commands/GetSequenceElementCommand.h"
-#include "commands/TryGetSequenceElementCommand.h"
-#include "commands/GetSubsequenceCommand.h"
-#include "commands/GetLengthCommand.h"
-#include "commands/AppendSequenceCommand.h"
-#include "commands/PrependSequenceCommand.h"
-#include "commands/InsertSequenceCommand.h"
-#include "commands/ConcatSequenceCommand.h"
-
 #include "TestRunner.h"
-#include "CliTests.h"
 #include "InternalTests.h"
-#include "MenuBuilder.h"
 #include "SharedPtr.h"
 #include "UniquePtr.h"
+#include "gui/mainwindow.h"
+#include <QApplication>
+
 
 // Функция для запуска всех тестов
 void runAllTests() {
@@ -93,12 +80,17 @@ void benchmark(int startIterations, int endIterations, int step) {
         outfile.close();
 }
 
-int main() {
-    bool runTests = true;
+int main(int argc, char *argv[]) {
+    bool runTests = false;
 
     if (runTests) {
         runAllTests();
         benchmark(10000, 1000000, 10000); // от 10k до 1млн с шагом 10k
         return 0;
+    } else {
+        QApplication a(argc, argv);
+        MainWindow w;
+        w.show();
+        return a.exec();
     }
 }
